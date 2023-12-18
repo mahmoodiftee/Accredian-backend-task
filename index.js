@@ -1,3 +1,4 @@
+
 const express = require("express");
 const mysql = require("mysql");
 const cors = require("cors");
@@ -14,19 +15,38 @@ const db = mysql.createConnection({
 })
 
 app.post('/signup', (req, res) => {
-    const sql = "INSERT INTO login (`name`, `email`, `password`) VALUES(?)";
-    const values = [
-        req.body.username,
-        req.body.email,
-        req.body.password
-    ]
-    db.query(sql, [values], (err, data) => {
+    const checkEmail = "SELECT * FROM login WHERE `email` = ?";
+    db.query(checkEmail, [req.body.email], (err, existingUser) => {
         if (err) {
             return res.json("error");
         }
-        return res.json(data);
-    })
-})
+        if (existingUser.length > 0) {
+            return res.json({ status: "emailAlreadyUsed" });
+        }
+
+        const createUser = "INSERT INTO login (`name`, `email`, `password`) VALUES(?)";
+        const values = [
+            req.body.username,
+            req.body.email,
+            req.body.password
+        ];
+
+        db.query(createUser, [values], (err, result) => {
+            if (err) {
+                return res.json("error");
+            }
+
+            const insertedUser = {
+                id: result.insertId,
+                name: req.body.username,
+                email: req.body.email,
+                password: req.body.password
+            };
+
+            return res.json({ status: "success", user: insertedUser });
+        });
+    });
+});
 
 
 app.post('/login', (req, res) => {
